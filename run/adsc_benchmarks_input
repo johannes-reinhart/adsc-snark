@@ -1,0 +1,14 @@
+arguments1="--profile --samples 100 -c 10 -i -1 6 -s -1"
+arguments2="--profile --samples 5 -c 10 -i 7 12 -s -1"
+arguments3="--profile --samples 1 -c 10 -i 13 16 -s -1"
+../cmake-build-release/adscsnark-folklore/profile_folklore_adscsnark $arguments1 > bench_generic_adscsnark_input.txt
+../cmake-build-release/depends/libsnark/libsnark/profile_r1cs_gg_ppzkadscsnark $arguments1 > bench_our_zkadscsnark_input.txt
+../cmake-build-release/depends/libsnark/libsnark/profile_r1cs_ppzkadsnark $arguments1 > bench_backes_adsnark_input.txt
+
+../cmake-build-release/adscsnark-folklore/profile_folklore_adscsnark $arguments2 >> bench_generic_adscsnark_input.txt
+../cmake-build-release/depends/libsnark/libsnark/profile_r1cs_gg_ppzkadscsnark $arguments2 >> bench_our_zkadscsnark_input.txt
+../cmake-build-release/depends/libsnark/libsnark/profile_r1cs_ppzkadsnark $arguments2 >> bench_backes_adsnark_input.txt
+
+../cmake-build-release/adscsnark-folklore/profile_folklore_adscsnark $arguments3 >> bench_generic_adscsnark_input.txt
+../cmake-build-release/depends/libsnark/libsnark/profile_r1cs_gg_ppzkadscsnark $arguments3 >> bench_our_zkadscsnark_input.txt
+../cmake-build-release/depends/libsnark/libsnark/profile_r1cs_ppzkadsnark $arguments3 >> bench_backes_adsnark_input.txt
