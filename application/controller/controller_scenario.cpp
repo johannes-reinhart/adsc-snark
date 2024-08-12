@@ -490,7 +490,10 @@ void Device::run(){
     primary_input = ps->pb.primary_input();
     auxiliary_input = ps->pb.auxiliary_input();
 
-    assert(ps->constraint_system.is_satisfied(primary_input, auxiliary_input));
+    //assert(ps->constraint_system.is_satisfied(primary_input, auxiliary_input));
+    if(!ps->constraint_system.is_satisfied(primary_input, auxiliary_input)){
+        throw std::runtime_error("Constraint system not satisfied");
+    }
 
     r1cs_gg_ppadscsnark_proof<EcPP> proof = r1cs_gg_ppadscsnark_prover<EcPP>(pk,
                                      ps->constraint_system,
