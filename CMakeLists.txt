@@ -34,7 +34,7 @@ option(
 option(
         MONTGOMERY_OUTPUT
         "Serialize Fp elements as their Montgomery representations (faster but not human-readable)"
-        ON
+        OFF
 )
 option(
         USE_PT_COMPRESSION
