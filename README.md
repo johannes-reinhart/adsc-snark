@@ -17,7 +17,7 @@ These build instructions have been tested on Ubuntu 20.04 and Debian 10
 1. Install build tools and dependencies
 
 ```
-sudo apt-get install build-essential cmake libgmp3-dev libssl-dev
+sudo apt-get install build-essential cmake libgmp3-dev libssl-dev pkg-config libboost-all-dev
 ```
 
 2. Clone submodules
@@ -29,17 +29,23 @@ git submodule init && git submodule update
 3. Configure
 
 ```
-mkdir cmake-build-release && cd cmake-build-release
-cmake -DBINARY_OUTPUT=ON -DMONTGOMERY_OUTPUT=OFF -DCURVE=BN254 ..  
+mkdir build && cd build
+cmake ..  
 ```
-
-For other elliptic curves, replace BN254 with any of:
+BN254 will be used as the default elliptic curve.
+For other elliptic curves, add -DCURVE=<CURVE> in the configure step and replace <CURVE> with any of:
 - BN254
 - BN183
 - BN124
 - GMV181
 - GMV97
 - GMV58
+
+Example:
+
+```
+cmake -DCURVE=BN183 ..
+```
 
 4. Build
 

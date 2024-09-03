@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 project (adsc-snark)
 
@@ -34,7 +34,7 @@ option(
 option(
         MONTGOMERY_OUTPUT
         "Serialize Fp elements as their Montgomery representations (faster but not human-readable)"
-        ON
+        OFF
 )
 option(
         USE_PT_COMPRESSION
@@ -61,7 +61,7 @@ option(
 option(
         WITH_PROCPS
         "Use procps for memory profiling"
-        ON
+        OFF
 )
 
 option(
