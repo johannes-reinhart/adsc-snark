@@ -24,7 +24,7 @@
 
 #include "libff/common/default_types/ec_pp.hpp"
 #include "libsnark/gadgetlib1/protoboard_structured.hpp"
-#include "libsnark/zk_proof_systems/ppadscsnark/r1cs_gg_ppadscsnark/r1cs_gg_ppadscsnark.hpp"
+#include "libsnark/zk_proof_systems/ppadscsnark/r1cs_gg_ppzkadscsnark/r1cs_gg_ppzkadscsnark.hpp"
 #include "libsnark/relations/constraint_satisfaction_problems/r1cs/examples/r1cs_examples.hpp"
 #include "libsnark/reductions/r1cs_to_r1cs/r1cs_to_r1cs.hpp"
 
@@ -238,7 +238,7 @@ public:
     state_manager<SFieldT> s_manager;
 
     std::shared_ptr<ctrl_gadget> g;
-    r1cs_gg_ppadscsnark_constraint_system<EcPP> constraint_system;
+    r1cs_gg_ppzkadscsnark_constraint_system<EcPP> constraint_system;
     size_t label_cmd_x_1;
     size_t label_cmd_x_2;
     size_t label_cmd_y_1;
@@ -326,24 +326,24 @@ public:
 
     }
 
-    void generate_r1cs_witness(long cmd_x_1_val, long cmd_x_2_val,
-                               long cmd_y_1_val, long cmd_y_2_val,
-                               long cmd_z_1_val, long cmd_z_2_val,
-                               long measured_x_1_val, long measured_x_2_val,
-                               long measured_y_1_val, long measured_y_2_val,
-                               long measured_z_1_val, long measured_z_2_val){
-        pb.val(this->cmd_x_1) = SFieldT(cmd_x_1_val);
-        pb.val(this->cmd_x_2) = SFieldT(cmd_x_2_val);
-        pb.val(this->cmd_y_1) = SFieldT(cmd_y_1_val);
-        pb.val(this->cmd_y_2) = SFieldT(cmd_y_2_val);
-        pb.val(this->cmd_z_1) = SFieldT(cmd_z_1_val);
-        pb.val(this->cmd_z_2) = SFieldT(cmd_z_2_val);
-        pb.val(this->measured_x_1) = SFieldT(measured_x_1_val);
-        pb.val(this->measured_x_2) = SFieldT(measured_x_2_val);
-        pb.val(this->measured_y_1) = SFieldT(measured_y_1_val);
-        pb.val(this->measured_y_2) = SFieldT(measured_y_2_val);
-        pb.val(this->measured_z_1) = SFieldT(measured_z_1_val);
-        pb.val(this->measured_z_2) = SFieldT(measured_z_2_val);
+    void generate_r1cs_witness(SFieldT cmd_x_1_val, SFieldT cmd_x_2_val,
+                               SFieldT cmd_y_1_val, SFieldT cmd_y_2_val,
+                               SFieldT cmd_z_1_val, SFieldT cmd_z_2_val,
+                               SFieldT measured_x_1_val, SFieldT measured_x_2_val,
+                               SFieldT measured_y_1_val, SFieldT measured_y_2_val,
+                               SFieldT measured_z_1_val, SFieldT measured_z_2_val){
+        pb.val(this->cmd_x_1) = cmd_x_1_val;
+        pb.val(this->cmd_x_2) = cmd_x_2_val;
+        pb.val(this->cmd_y_1) = cmd_y_1_val;
+        pb.val(this->cmd_y_2) = cmd_y_2_val;
+        pb.val(this->cmd_z_1) = cmd_z_1_val;
+        pb.val(this->cmd_z_2) = cmd_z_2_val;
+        pb.val(this->measured_x_1) = measured_x_1_val;
+        pb.val(this->measured_x_2) = measured_x_2_val;
+        pb.val(this->measured_y_1) = measured_y_1_val;
+        pb.val(this->measured_y_2) = measured_y_2_val;
+        pb.val(this->measured_z_1) = measured_z_1_val;
+        pb.val(this->measured_z_2) = measured_z_2_val;
         g->generate_r1cs_witness();
     }
 
@@ -359,8 +359,7 @@ struct longv3{
 class Sensor: NetworkParticipant {
 private:
     size_t message_count;
-    size_t label_x, label_y, label_z;
-    r1cs_gg_ppadscsnark_authentication_key<EcPP> authentication_key;
+    r1cs_gg_ppzkadscsnark_authentication_key<EcPP> authentication_key;
 
 protected:
     int sample_count;
@@ -375,10 +374,7 @@ public:
 };
 
 void Sensor::setup(){
-    authentication_key = this->receive_from<r1cs_gg_ppadscsnark_authentication_key<EcPP>>("authentication-key", "Generator");
-    label_x = this->receive_from<size_t>("label_x", "Generator");
-    label_y = this->receive_from<size_t>("label_y", "Generator");
-    label_z = this->receive_from<size_t>("label_z", "Generator");
+    authentication_key = this->receive_from<r1cs_gg_ppzkadscsnark_authentication_key<EcPP>>("authentication-key", "Generator");
 }
 
 void Sensor::run(){
@@ -386,16 +382,13 @@ void Sensor::run(){
     size_t mc = message_count++;
 
     // Authenticate
-    SFieldT x_mac = r1cs_gg_ppadscsnark_authenticate(authentication_key, label_x, mc, SFieldT(value.x));
-    SFieldT y_mac = r1cs_gg_ppadscsnark_authenticate(authentication_key, label_y, mc, SFieldT(value.y));
-    SFieldT z_mac = r1cs_gg_ppadscsnark_authenticate(authentication_key, label_z, mc, SFieldT(value.z));
+    r1cs_gg_ppzkadscsnark_authenticated_input<EcPP> authenticated_input = r1cs_gg_ppzkadscsnark_authenticate(
+        authentication_key, mc,
+        {SFieldT(value.x),
+                SFieldT(value.y),
+                SFieldT(value.z)});
 
-    this->send_to(value.x, "x", "Device");
-    this->send_to(value.y, "y", "Device");
-    this->send_to(value.z, "z", "Device");
-    this->send_to(x_mac, "x_mac", "Device");
-    this->send_to(y_mac, "y_mac", "Device");
-    this->send_to(z_mac, "z_mac", "Device");
+    this->send_to(authenticated_input, "input", "Device");
 }
 
 class SensorInputCmd: public Sensor {
@@ -438,8 +431,10 @@ longv3 SensorMeasurement::get_sample() {
 
 class Device : NetworkParticipant{
 private:
-    r1cs_gg_ppadscsnark_proving_key<EcPP> pk;
+    r1cs_gg_ppzkadscsnark_proving_key<EcPP> pk;
     std::shared_ptr<ProtoboardSetup> ps;
+    r1cs_gg_ppzkadscsnark_prover_state<EcPP> prover_state;
+
 public:
     Device(std::string name="Device", Communicator &comm=default_comm) :
         NetworkParticipant(name, comm)
@@ -449,60 +444,59 @@ public:
 };
 
 void Device::setup(){
-    pk = this->receive_from<r1cs_gg_ppadscsnark_proving_key<EcPP>>("pk", "Generator");
+    pk = this->receive_from<r1cs_gg_ppzkadscsnark_proving_key<EcPP>>("pk", "Generator");
     ps.reset(new ProtoboardSetup("g"));
     ps->s_manager.init();
 }
 
 void Device::run(){
-    r1cs_primary_input<SFieldT> primary_input;
-    r1cs_auxiliary_input<SFieldT> auxiliary_input;
+    r1cs_gg_ppzkadscsnark_primary_input<EcPP> primary_input;
+    r1cs_gg_ppzkadscsnark_assignment<EcPP> state_input;
+    r1cs_gg_ppzkadscsnark_assignment<EcPP> state_update_input;
+    r1cs_gg_ppzkadscsnark_assignment<EcPP> witness_input;
 
-    long cmd_x_1 = this->receive_from<long>("x", "SensorInputCmd1");
-    long cmd_y_1 = this->receive_from<long>("y", "SensorInputCmd1");
-    long cmd_z_1 = this->receive_from<long>("z", "SensorInputCmd1");
-    long cmd_x_2 = this->receive_from<long>("x", "SensorInputCmd2");
-    long cmd_y_2 = this->receive_from<long>("y", "SensorInputCmd2");
-    long cmd_z_2 = this->receive_from<long>("z", "SensorInputCmd2");
-    long measured_x_1 = this->receive_from<long>("x", "SensorMeasurement1");
-    long measured_y_1 = this->receive_from<long>("y", "SensorMeasurement1");
-    long measured_z_1 = this->receive_from<long>("z", "SensorMeasurement1");
-    long measured_x_2 = this->receive_from<long>("x", "SensorMeasurement2");
-    long measured_y_2 = this->receive_from<long>("y", "SensorMeasurement2");
-    long measured_z_2 = this->receive_from<long>("z", "SensorMeasurement2");
+    auto cmd_1 = this->receive_from<r1cs_gg_ppzkadscsnark_authenticated_input<EcPP>>("input", "SensorInputCmd1");
+    auto cmd_2 = this->receive_from<r1cs_gg_ppzkadscsnark_authenticated_input<EcPP>>("input", "SensorInputCmd2");
+    auto measured_1 = this->receive_from<r1cs_gg_ppzkadscsnark_authenticated_input<EcPP>>("input", "SensorMeasurement1");
+    auto measured_2 = this->receive_from<r1cs_gg_ppzkadscsnark_authenticated_input<EcPP>>("input", "SensorMeasurement2");
 
-    SFieldT cmd_x_1_mac = this->receive_from<SFieldT>("x_mac", "SensorInputCmd1");
-    SFieldT cmd_y_1_mac = this->receive_from<SFieldT>("y_mac", "SensorInputCmd1");
-    SFieldT cmd_z_1_mac = this->receive_from<SFieldT>("z_mac", "SensorInputCmd1");
-    SFieldT cmd_x_2_mac = this->receive_from<SFieldT>("x_mac", "SensorInputCmd2");
-    SFieldT cmd_y_2_mac = this->receive_from<SFieldT>("y_mac", "SensorInputCmd2");
-    SFieldT cmd_z_2_mac = this->receive_from<SFieldT>("z_mac", "SensorInputCmd2");
-    SFieldT measured_x_1_mac = this->receive_from<SFieldT>("x_mac", "SensorMeasurement1");
-    SFieldT measured_y_1_mac = this->receive_from<SFieldT>("y_mac", "SensorMeasurement1");
-    SFieldT measured_z_1_mac = this->receive_from<SFieldT>("z_mac", "SensorMeasurement1");
-    SFieldT measured_x_2_mac = this->receive_from<SFieldT>("x_mac", "SensorMeasurement2");
-    SFieldT measured_y_2_mac = this->receive_from<SFieldT>("y_mac", "SensorMeasurement2");
-    SFieldT measured_z_2_mac = this->receive_from<SFieldT>("z_mac", "SensorMeasurement2");
-
-    ps->generate_r1cs_witness(cmd_x_1, cmd_x_2, cmd_y_1, cmd_y_2, cmd_z_1, cmd_z_2,
-                                measured_x_1, measured_x_2, measured_y_1, measured_y_2, measured_z_1, measured_z_2);
+    ps->generate_r1cs_witness(cmd_1.values[0], cmd_2.values[0],
+                                cmd_1.values[1], cmd_2.values[1],
+                                cmd_1.values[2], cmd_2.values[2],
+                            measured_1.values[0], measured_2.values[0],
+                            measured_1.values[1], measured_2.values[1],
+                            measured_1.values[2], measured_2.values[2]);
 
     primary_input = ps->pb.primary_input();
-    auxiliary_input = ps->pb.auxiliary_input();
+    state_input = ps->pb.get_block_assignment(ps->ID_BLOCK_STATE_IN);
+    state_update_input = ps->pb.get_block_assignment(ps->ID_BLOCK_STATE_OUT);
+    witness_input = ps->pb.get_free_assignment();
 
+#ifdef DEBUG
+    r1cs_auxiliary_input<SFieldT> auxiliary_input;
+    auxiliary_input.insert(auxiliary_input.end(), cmd_1.values.begin(), cmd_1.values.end());
+    auxiliary_input.insert(auxiliary_input.end(), cmd_2.values.begin(), cmd_2.values.end());
+    auxiliary_input.insert(auxiliary_input.end(), measured_1.values.begin(), measured_1.values.end());
+    auxiliary_input.insert(auxiliary_input.end(), measured_2.values.begin(), measured_2.values.end());
+    auxiliary_input.insert(auxiliary_input.end(), state_input.begin(), state_input.end());
+    auxiliary_input.insert(auxiliary_input.end(), state_update_input.begin(), state_update_input.end());
+    auxiliary_input.insert(auxiliary_input.end(), witness_input.begin(), witness_input.end());
     assert(ps->constraint_system.is_satisfied(primary_input, auxiliary_input));
+#endif
 
-    r1cs_gg_ppadscsnark_proof<EcPP> proof = r1cs_gg_ppadscsnark_prover<EcPP>(pk,
+    std::pair<r1cs_gg_ppzkadscsnark_proof<EcPP>,
+                r1cs_gg_ppzkadscsnark_commitment<EcPP>> proof = r1cs_gg_ppzkadscsnark_prover<EcPP>(pk,
                                      ps->constraint_system,
                                      primary_input,
-                                     auxiliary_input,
-                                     {cmd_x_1_mac, cmd_y_1_mac, cmd_z_1_mac,
-                                      cmd_x_2_mac, cmd_y_2_mac, cmd_z_2_mac,
-                                      measured_x_1_mac, measured_y_1_mac, measured_z_1_mac,
-                                      measured_x_2_mac, measured_y_2_mac, measured_z_2_mac});
+                                     {cmd_1, cmd_2, measured_1, measured_2},
+                                     state_input,
+                                     state_update_input,
+                                     witness_input,
+                                     prover_state);
 
     this->send_to(primary_input, "values", "Verifier");
-    this->send_to(proof, "proof", "Verifier");
+    this->send_to(proof.first, "proof", "Verifier");
+    this->send_to(proof.second, "commitment", "Verifier");
     ps->s_manager.update();
 }
 
@@ -517,37 +511,25 @@ void Generator::setup(){
 
     // Initialize state variables
     ps.s_manager.init();
-    r1cs_gg_ppadscsnark_keypair<EcPP> keypair = r1cs_gg_ppadscsnark_generator<EcPP>(ps.constraint_system,
+    r1cs_gg_ppzkadscsnark_keypair<EcPP> keypair = r1cs_gg_ppzkadscsnark_generator<EcPP>(ps.constraint_system,
                                                                                     ps.pb.get_block_assignment(ps.ID_BLOCK_STATE_IN),
                                                                                     {3, 3, 3, 3}); // each of the 4 sensors provides 3 values
     assert(keypair.aks.size() == 4);
 
     this->send_to(keypair.pk, "pk", "Device");
     this->send_to(keypair.vk, "vk", "Verifier");
-    this->send_to(keypair.initial_proof, "initial_proof", "Verifier");
+    this->send_to(keypair.initial_commitment, "initial_commitment", "Verifier");
     this->send_to(keypair.aks[0], "authentication-key", "SensorInputCmd1");
     this->send_to(keypair.aks[1], "authentication-key", "SensorInputCmd2");
     this->send_to(keypair.aks[2], "authentication-key", "SensorMeasurement1");
     this->send_to(keypair.aks[3], "authentication-key", "SensorMeasurement2");
-    this->send_to(ps.label_cmd_x_1, "label_x", "SensorInputCmd1");
-    this->send_to(ps.label_cmd_y_1, "label_y", "SensorInputCmd1");
-    this->send_to(ps.label_cmd_z_1, "label_z", "SensorInputCmd1");
-    this->send_to(ps.label_cmd_x_2, "label_x", "SensorInputCmd2");
-    this->send_to(ps.label_cmd_y_2, "label_y", "SensorInputCmd2");
-    this->send_to(ps.label_cmd_z_2, "label_z", "SensorInputCmd2");
-    this->send_to(ps.label_measured_x_1, "label_x", "SensorMeasurement1");
-    this->send_to(ps.label_measured_y_1, "label_y", "SensorMeasurement1");
-    this->send_to(ps.label_measured_z_1, "label_z", "SensorMeasurement1");
-    this->send_to(ps.label_measured_x_2, "label_x", "SensorMeasurement2");
-    this->send_to(ps.label_measured_y_2, "label_y", "SensorMeasurement2");
-    this->send_to(ps.label_measured_z_2, "label_z", "SensorMeasurement2");
 }
 
 class Verifier : NetworkParticipant{
 private:
     int message_count;
-    r1cs_gg_ppadscsnark_proof<EcPP> previous_proof;
-    r1cs_gg_ppadscsnark_processed_verification_key<EcPP> pvk;
+    r1cs_gg_ppzkadscsnark_commitment<EcPP> previous_commitment;
+    r1cs_gg_ppzkadscsnark_processed_verification_key<EcPP> pvk;
 public:
     int confirmed_count;
     int error_count;
@@ -558,33 +540,29 @@ public:
 };
 
 void Verifier::setup(){
-    r1cs_gg_ppadscsnark_verification_key<EcPP> vk = this->receive_from<r1cs_gg_ppadscsnark_verification_key<EcPP>>("vk", "Generator");
-    pvk = r1cs_gg_ppadscsnark_verifier_process_vk(vk);
-    previous_proof = this->receive_from<r1cs_gg_ppadscsnark_proof<EcPP>>("initial_proof", "Generator");
+    r1cs_gg_ppzkadscsnark_verification_key<EcPP> vk = this->receive_from<r1cs_gg_ppzkadscsnark_verification_key<EcPP>>("vk", "Generator");
+    pvk = r1cs_gg_ppzkadscsnark_verifier_process_vk(vk);
+    previous_commitment = this->receive_from<r1cs_gg_ppzkadscsnark_commitment<EcPP>>("initial_commitment", "Generator");
 }
 
 void Verifier::run(){
-    r1cs_gg_ppadscsnark_proof<EcPP> proof;
+    const uint16_t mc = message_count++;
 
-    bool verified;
-    long output_x, output_y, output_z;
-    uint16_t mc = message_count++;
-
-    r1cs_gg_ppadscsnark_primary_input<EcPP> primary_input = this->receive_from<r1cs_gg_ppadscsnark_primary_input<EcPP>>("values", "Device");
-
-    proof = this->receive_from<r1cs_gg_ppadscsnark_proof<EcPP>>("proof", "Device");
+    const auto primary_input = this->receive_from<r1cs_gg_ppzkadscsnark_primary_input<EcPP>>("values", "Device");
+    const auto proof = this->receive_from<r1cs_gg_ppzkadscsnark_proof<EcPP>>("proof", "Device");
+    const auto commitment = this->receive_from<r1cs_gg_ppzkadscsnark_commitment<EcPP>>("commitment", "Device");
 
     assert(primary_input.size() == 3);
-    output_x = field_to_signed_int(primary_input[0]);
-    output_y = field_to_signed_int(primary_input[1]);
-    output_z = field_to_signed_int(primary_input[2]);
+    const long output_x = field_to_signed_int(primary_input[0]);
+    const long output_y = field_to_signed_int(primary_input[1]);
+    const long output_z = field_to_signed_int(primary_input[2]);
 
-    verified = r1cs_gg_ppadscsnark_online_verifier_strong_IC<EcPP>(pvk, primary_input, proof, previous_proof, mc);
+    const bool verified = r1cs_gg_ppzkadscsnark_online_verifier_strong_IC<EcPP>(pvk, primary_input, proof, commitment, previous_commitment, mc);
     if (!verified){
         std::cerr << "SNARK does not verify" << std::endl;
     }
 
-    previous_proof = proof;
+    previous_commitment = commitment;
     if (!libff::inhibit_profiling_info) {
         std::cout << " Outputs: x=" << output_x << " y=" << output_y << " z=" << output_z << " Verified: " << verified
                   << std::endl;

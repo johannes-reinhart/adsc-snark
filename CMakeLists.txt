@@ -263,5 +263,5 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 
 add_subdirectory(depends)
 add_subdirectory(application)
-add_subdirectory(adscsnark-folklore)
+add_subdirectory(adscsnark-strawman)
 

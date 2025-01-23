@@ -1,16 +1,16 @@
 /** @file
 *****************************************************************************
 
-folklore ADSC-SNARK
+strawman ADSC-SNARK
 
 An ADSC-SNARK proves iterative and stateful computations on authenticated data  
 *****************************************************************************/
 
-#ifndef FOLKLORE_ADSCSNARK_TCC_
-#define FOLKLORE_ADSCSNARK_TCC_
+#ifndef STRAWMAN_ADSCSNARK_TCC_
+#define STRAWMAN_ADSCSNARK_TCC_
 
 template<typename ppT>
-std::ostream& operator<<(std::ostream &out, const folklore_adscsnark_proof<ppT> &proof)
+std::ostream& operator<<(std::ostream &out, const strawman_adscsnark_proof<ppT> &proof)
 {
     out << proof.snark_proof << OUTPUT_NEWLINE;
     out << proof.hash  << OUTPUT_NEWLINE;
@@ -18,7 +18,7 @@ std::ostream& operator<<(std::ostream &out, const folklore_adscsnark_proof<ppT> 
 }
 
 template<typename ppT>
-std::istream& operator>>(std::istream &in, folklore_adscsnark_proof<ppT> &proof)
+std::istream& operator>>(std::istream &in, strawman_adscsnark_proof<ppT> &proof)
 {
     in >> proof.snark_proof;
     libff::consume_OUTPUT_NEWLINE(in);
@@ -44,7 +44,7 @@ libsnark::r1cs_constraint<FieldT> r1cs_constraint_remap(const libsnark::r1cs_con
 }
 
 template<typename ppT>
-std::vector<ethsnarks::eddsa_keypair> folklore_adscsnark_generator_auth(const std::vector<size_t> &private_input_blocks){
+std::vector<ethsnarks::eddsa_keypair> strawman_adscsnark_generator_auth(const std::vector<size_t> &private_input_blocks){
     size_t num_keys = 1;
     if(private_input_blocks.size() > 0){
         num_keys = private_input_blocks.size();
@@ -57,8 +57,8 @@ std::vector<ethsnarks::eddsa_keypair> folklore_adscsnark_generator_auth(const st
 }
 
 template<typename ppT>
-folklore_adscsnark_relation<libff::Fr<ppT>> r1cs_example_to_r1cs_folklore_adsc(const libsnark::r1cs_adsc_example<libff::Fr<ppT>> &example, const std::vector<ethsnarks::eddsa_keypair> &keys, const std::vector<size_t> &private_input_blocks){
-    folklore_adscsnark_relation<libff::Fr<ppT>> relation;
+strawman_adscsnark_relation<libff::Fr<ppT>> r1cs_example_to_r1cs_strawman_adsc(const libsnark::r1cs_adsc_example<libff::Fr<ppT>> &example, const std::vector<ethsnarks::eddsa_keypair> &keys, const std::vector<size_t> &private_input_blocks){
+    strawman_adscsnark_relation<libff::Fr<ppT>> relation;
 
     relation.primary_input_size = example.primary_input[0].size();
     relation.private_input_size = example.private_input[0].size();
@@ -169,7 +169,7 @@ folklore_adscsnark_relation<libff::Fr<ppT>> r1cs_example_to_r1cs_folklore_adsc(c
 }
 
 template<typename ppT>
-folklore_adscsnark_signature<ppT> folklore_adscsnark_authenticate(const folklore_adscsnark_authentication_key<ppT> &ak, size_t iteration, const std::vector<libff::Fr<ppT>> &values){
+strawman_adscsnark_signature<ppT> strawman_adscsnark_authenticate(const strawman_adscsnark_authentication_key<ppT> &ak, size_t iteration, const std::vector<libff::Fr<ppT>> &values){
     ethsnarks::eddsa_msg_field msg;
     for(size_t i = 0; i < values.size(); ++i){
         msg.push_back(values[i].as_bigint());
@@ -181,8 +181,8 @@ folklore_adscsnark_signature<ppT> folklore_adscsnark_authenticate(const folklore
 
 
 template<typename ppT>
-folklore_adscsnark_keypair<ppT> folklore_adscsnark_generator(folklore_adscsnark_relation<libff::Fr<ppT>> &relation,
-                                                           const folklore_adscsnark_variable_assignment<ppT> &initial_state,
+strawman_adscsnark_keypair<ppT> strawman_adscsnark_generator(strawman_adscsnark_relation<libff::Fr<ppT>> &relation,
+                                                           const strawman_adscsnark_variable_assignment<ppT> &initial_state,
                                                            const std::vector<ethsnarks::eddsa_keypair> &keys){
 
     assert(initial_state.size() == relation.state_size);
@@ -196,7 +196,7 @@ folklore_adscsnark_keypair<ppT> folklore_adscsnark_generator(folklore_adscsnark_
         relation.pb.val(relation.variable_map.at(1+relation.primary_input_size+relation.private_input_size+relation.state_size+i)) = initial_state[i];
     }
 
-    folklore_adscsnark_keypair<ppT> keypair;
+    strawman_adscsnark_keypair<ppT> keypair;
     libsnark::r1cs_gg_ppzksnark_keypair<ppT> snark_keypair = libsnark::r1cs_gg_ppzksnark_generator<ppT>(relation.constraint_system);
 
     keypair.pk = snark_keypair.pk;
@@ -212,14 +212,14 @@ folklore_adscsnark_keypair<ppT> folklore_adscsnark_generator(folklore_adscsnark_
 }
 
 template<typename ppT>
-folklore_adscsnark_proof<ppT> folklore_adscsnark_prover(const folklore_adscsnark_proving_key<ppT> &pk,
-                                                          folklore_adscsnark_relation<libff::Fr<ppT>> &relation,
-                                                          const folklore_adscsnark_primary_input<ppT> &primary_input,
-                                                          const folklore_adscsnark_variable_assignment<ppT> private_input,
-                                                          const folklore_adscsnark_variable_assignment<ppT> state_assignment,
-                                                          const folklore_adscsnark_variable_assignment<ppT> witness_assignment,
-                                                          const std::vector<folklore_adscsnark_signature<ppT>> &signatures){
-    folklore_adscsnark_proof<ppT> proof;
+strawman_adscsnark_proof<ppT> strawman_adscsnark_prover(const strawman_adscsnark_proving_key<ppT> &pk,
+                                                          strawman_adscsnark_relation<libff::Fr<ppT>> &relation,
+                                                          const strawman_adscsnark_primary_input<ppT> &primary_input,
+                                                          const strawman_adscsnark_variable_assignment<ppT> private_input,
+                                                          const strawman_adscsnark_variable_assignment<ppT> state_assignment,
+                                                          const strawman_adscsnark_variable_assignment<ppT> witness_assignment,
+                                                          const std::vector<strawman_adscsnark_signature<ppT>> &signatures){
+    strawman_adscsnark_proof<ppT> proof;
     libsnark::r1cs_gg_ppzksnark_primary_input<ppT> new_primary_input;
     libsnark::r1cs_gg_ppzksnark_primary_input<ppT> new_auxiliary_input;
 
@@ -251,7 +251,7 @@ folklore_adscsnark_proof<ppT> folklore_adscsnark_prover(const folklore_adscsnark
         relation.signature_gadgets[i].generate_r1cs_witness(signatures[i]);
     }
 
-    folklore_adscsnark_variable_assignment<ppT> assignment = relation.pb.full_variable_assignment();
+    strawman_adscsnark_variable_assignment<ppT> assignment = relation.pb.full_variable_assignment();
 
     proof.hash = relation.pb.val(relation.state_out_digest);
     proof.snark_proof = libsnark::r1cs_gg_ppzksnark_prover(pk, relation.constraint_system,relation.pb.primary_input(), relation.pb.auxiliary_input());
@@ -259,15 +259,15 @@ folklore_adscsnark_proof<ppT> folklore_adscsnark_prover(const folklore_adscsnark
 }
 
 template<typename ppT>
-folklore_adscsnark_processed_verification_key<ppT> folklore_adscsnark_verifier_process_vk(const folklore_adscsnark_verification_key<ppT> &vk){
+strawman_adscsnark_processed_verification_key<ppT> strawman_adscsnark_verifier_process_vk(const strawman_adscsnark_verification_key<ppT> &vk){
     return libsnark::r1cs_gg_ppzksnark_verifier_process_vk(vk);
 }
 
 template<typename ppT>
-bool folklore_adscsnark_online_verifier(const folklore_adscsnark_processed_verification_key<ppT> &pvk,
-                                                     const folklore_adscsnark_primary_input<ppT> &primary_input,
-                                                     const folklore_adscsnark_proof<ppT> &proof,
-                                                     const folklore_adscsnark_proof<ppT> &proof_previous){
+bool strawman_adscsnark_online_verifier(const strawman_adscsnark_processed_verification_key<ppT> &pvk,
+                                                     const strawman_adscsnark_primary_input<ppT> &primary_input,
+                                                     const strawman_adscsnark_proof<ppT> &proof,
+                                                     const strawman_adscsnark_proof<ppT> &proof_previous){
     libsnark::r1cs_gg_ppzksnark_primary_input<ppT> new_primary_input(primary_input);
 
     // Add digests
@@ -278,7 +278,7 @@ bool folklore_adscsnark_online_verifier(const folklore_adscsnark_processed_verif
 
 }
 
-#endif // FOLKLORE_ADSCSNARK_TCC_
+#endif // STRAWMAN_ADSCSNARK_TCC_
 
 
 

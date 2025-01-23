@@ -1,7 +1,7 @@
 /** @file
  *****************************************************************************
 
- Profiling program that exercises the folklore ADSC-SNARK (authenticate, generate, prove,
+ Profiling program that exercises the strawman ADSC-SNARK (authenticate, generate, prove,
  then verify) on a synthetic R1CS instance.
 
  *****************************************************************************/
@@ -18,9 +18,9 @@
 #include "depends/libsnark/libsnark/relations/constraint_satisfaction_problems/r1cs/examples/r1cs_ext_examples.hpp"
 #include "depends/libsnark/libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp"
 
-#include "folklore_adscsnark.hpp"
+#include "strawman_adscsnark.hpp"
 
-#define APPLICATION_NAME "Generic ADSC-SNARK profiling application"
+#define APPLICATION_NAME "Strawman ADSC-SNARK profiling application"
 
 using namespace libsnark;
 typedef default_r1cs_gg_ppzkadscsnark_pp PP;
@@ -66,7 +66,7 @@ void display_info(){
 }
 
 
-adscsnark_profile_t profile_folklore_adscsnark(
+adscsnark_profile_t profile_strawman_adscsnark(
         size_t num_constraints,
         size_t public_io_size,
         size_t private_input_size,
@@ -96,26 +96,26 @@ adscsnark_profile_t profile_folklore_adscsnark(
 
     r1cs_adsc_example<libff::Fr<PP> > example = generate_r1cs_adsc_example_with_field_input<libff::Fr<PP> >(num_constraints, public_io_size, private_input_size, state_size, samples);
 
-    std::vector<ethsnarks::eddsa_keypair> auth_keys = folklore_adscsnark_generator_auth<PP>();
-    folklore_adscsnark_relation<libff::Fr<PP>> relation = r1cs_example_to_r1cs_folklore_adsc<PP>(example, auth_keys);
+    std::vector<ethsnarks::eddsa_keypair> auth_keys = strawman_adscsnark_generator_auth<PP>();
+    strawman_adscsnark_relation<libff::Fr<PP>> relation = r1cs_example_to_r1cs_strawman_adsc<PP>(example, auth_keys);
 
     profile_result.witness_size = relation.constraint_system.num_variables() - public_io_size;
     profile_result.circuit_num_constraints = relation.constraint_system.num_constraints();
 
     tstart = libff::get_nsec_cpu_time();
-    folklore_adscsnark_keypair<PP> keypair = folklore_adscsnark_generator<PP>(relation, example.state_assignment[0], auth_keys);
+    strawman_adscsnark_keypair<PP> keypair = strawman_adscsnark_generator<PP>(relation, example.state_assignment[0], auth_keys);
     tend = libff::get_nsec_cpu_time();
     profile_result.generator_runtime = tend - tstart;
 
     tstart = libff::get_nsec_cpu_time();
-    folklore_adscsnark_processed_verification_key<PP> pvk = folklore_adscsnark_verifier_process_vk<PP>(keypair.vk);
+    strawman_adscsnark_processed_verification_key<PP> pvk = strawman_adscsnark_verifier_process_vk<PP>(keypair.vk);
     tend = libff::get_nsec_cpu_time();
     profile_result.verifier_preprocessing_runtime = tend - tstart;
 
-    folklore_adscsnark_proof<PP> previous_proof = keypair.initial_proof;
+    strawman_adscsnark_proof<PP> previous_proof = keypair.initial_proof;
     for(size_t t = 0; t < samples; ++t) {
         tstart = libff::get_nsec_cpu_time();
-        folklore_adscsnark_signature<PP> signature = folklore_adscsnark_authenticate<PP>(keypair.aks[0], t, example.private_input[t]);
+        strawman_adscsnark_signature<PP> signature = strawman_adscsnark_authenticate<PP>(keypair.aks[0], t, example.private_input[t]);
 
 
 
@@ -124,7 +124,7 @@ adscsnark_profile_t profile_folklore_adscsnark(
 
 
         tstart = libff::get_nsec_cpu_time();
-        folklore_adscsnark_proof<PP> proof = folklore_adscsnark_prover<PP>(keypair.pk,
+        strawman_adscsnark_proof<PP> proof = strawman_adscsnark_prover<PP>(keypair.pk,
                                                                                relation,
                                                                                example.primary_input[t],
                                                                                example.private_input[t],
@@ -139,7 +139,7 @@ adscsnark_profile_t profile_folklore_adscsnark(
         }
 
         tstart = libff::get_nsec_cpu_time();
-        bool verified = folklore_adscsnark_online_verifier<PP>(pvk, example.primary_input[t], proof, previous_proof);
+        bool verified = strawman_adscsnark_online_verifier<PP>(pvk, example.primary_input[t], proof, previous_proof);
         tend = libff::get_nsec_cpu_time();
         profile_measurements[t].verifier_runtime = tend - tstart;
 
@@ -196,9 +196,11 @@ int main(int argc, const char * argv[])
     PP::init_public_params();
     ethsnarks::init_eddsa();
 
+#ifndef DEBUG
     // We do not want to print profiling info at runtime, we will print results at the end
     libff::inhibit_profiling_info = true;
     libff::inhibit_profiling_counters = true;
+#endif
 
     std::cout << "Running " APPLICATION_NAME << std::endl;
 
@@ -264,7 +266,7 @@ int main(int argc, const char * argv[])
             for(int state_num = state_range[0];
                 state_num <= state_range[1];
                 state_num += state_range[2]) {
-                profile = profile_folklore_adscsnark(pow2(num_constraints),
+                profile = profile_strawman_adscsnark(pow2(num_constraints),
                                                       pow2(public_io_size),
                                                       pow2(private_inputs_num),
                                                       pow2(state_num),

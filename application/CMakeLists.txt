@@ -11,6 +11,7 @@ target_link_libraries(
         controller_scenario
 
         snark
+        snark_crypto
         ${Boost_LIBRARIES}
 )
 
