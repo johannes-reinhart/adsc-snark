@@ -17,11 +17,10 @@
 #include <cstdint>
 #include <memory>
 
-#include "depends/libsnark/libsnark/gadgetlib1/gadget.hpp"
-#include "depends/libsnark/libsnark/gadgetlib1/protoboard.hpp"
-#include "depends/libsnark/libsnark/gadgetlib1/pb_variable.hpp"
-#include "depends/ethsnarks/src/jubjub/eddsa.hpp"
-#include "crypto/signatures/eddsa.h"
+#include <libsnark/gadgetlib1/gadget.hpp>
+#include <libsnark/libsnark/gadgetlib1/pb_variable.hpp>
+#include <ethsnarks/src/jubjub/eddsa.hpp>
+#include <libsnark/common/crypto/signature/eddsa_snarkfriendly.hpp>
 
 typedef struct variable_type_ {
     int size;
@@ -40,26 +39,26 @@ private:
     ethsnarks::jubjub::VariablePointT sig_R;
     libsnark::pb_variable_array<FieldT> sig_S;
     ethsnarks::jubjub::VariablePointT A;
-    ethsnarks::eddsa_public_key pubkey;
+    libsnark::eddsa_sf_pubkey<ethsnarks::default_inner_ec_pp> pubkey;
     ethsnarks::jubjub::EdwardsPoint B;
 
 
 public:
     signature_gadget_pedersen(libsnark::protoboard<FieldT> &pb,
-                     ethsnarks::eddsa_public_key pubkey,
+                 const libsnark::eddsa_sf_pubkey<ethsnarks::default_inner_ec_pp> &pubkey,
                  const std::string &annotation_prefix=""):
             libsnark::gadget<FieldT>(pb, annotation_prefix),
                         params(), sig_R(pb, "sig_R"), A(pb, "A"), pubkey(pubkey), B(params.Gx, params.Gy)
 
     {
-        this->pubkey.to_affine_coordinates();
+        this->pubkey.pkey.to_affine_coordinates();
         sig_S = ethsnarks::make_var_array(pb, FieldT::ceil_size_in_bits(), FMT(annotation_prefix, ".sig_S"));
 
     };
 
     void generate_r1cs_constraints ();
 
-    void generate_r1cs_witness(ethsnarks::EddsaSignature sig);
+    void generate_r1cs_witness(libsnark::eddsa_sf_signature<ethsnarks::default_inner_ec_pp> sig);
 
     /**
      * allocate variables in protoboard
@@ -69,7 +68,7 @@ public:
      */
     void allocate();
 
-    void add_variable(const libsnark::pb_variable<FieldT> &v, const unsigned int size, bool is_signed);
+    void add_variable(const libsnark::pb_variable<FieldT> &v, unsigned int size, bool is_signed);
 };
 
 template<typename FieldT>
@@ -83,28 +82,28 @@ private:
     libsnark::pb_variable_array<FieldT> sig_S;
     //VariablePointT A;
     ethsnarks::jubjub::EdwardsPoint A;
-    ethsnarks::eddsa_public_key pubkey;
+    libsnark::eddsa_sf_pubkey<ethsnarks::default_inner_ec_pp> pubkey;
     ethsnarks::jubjub::EdwardsPoint B;
 
 
 public:
     signature_gadget_poseidon(libsnark::protoboard<FieldT> &pb,
-                     ethsnarks::eddsa_public_key pubkey,
+                     const libsnark::eddsa_sf_pubkey<ethsnarks::default_inner_ec_pp> &pubkey,
                      const std::string &annotation_prefix=""):
             libsnark::gadget<FieldT>(pb, annotation_prefix),
             params(), sig_R(pb, "sig_R"), pubkey(pubkey), B(params.Gx, params.Gy)
 
     {
-        this->pubkey.to_affine_coordinates();
-        A.x = ethsnarks::default_inner_ec_pp::inner2outer(this->pubkey.X);
-        A.y = ethsnarks::default_inner_ec_pp::inner2outer(this->pubkey.Y);
+        this->pubkey.pkey.to_affine_coordinates();
+        A.x = ethsnarks::default_inner_ec_pp::inner2outer(this->pubkey.pkey.X);
+        A.y = ethsnarks::default_inner_ec_pp::inner2outer(this->pubkey.pkey.Y);
         sig_S = ethsnarks::make_var_array(pb, FieldT::ceil_size_in_bits(), FMT(annotation_prefix, ".sig_S"));
 
     };
 
     void generate_r1cs_constraints ();
 
-    void generate_r1cs_witness (ethsnarks::EddsaSignature sig);
+    void generate_r1cs_witness (libsnark::eddsa_sf_signature<ethsnarks::default_inner_ec_pp> sig);
 
     /**
      * allocate variables in protoboard
@@ -124,7 +123,7 @@ public:
      * @param size: ignored
      * @param is_signed: ignored
      */
-    void add_variable(const libsnark::pb_variable<FieldT> &v, const unsigned int size, bool is_signed);
+    void add_variable(const libsnark::pb_variable<FieldT> &v, unsigned int size, bool is_signed);
 
 };
 

@@ -9,6 +9,8 @@ An ADSC-SNARK proves iterative and stateful computations on authenticated data
 #ifndef STRAWMAN_ADSCSNARK_TCC_
 #define STRAWMAN_ADSCSNARK_TCC_
 
+#include "strawman_adscsnark.hpp"
+
 template<typename ppT>
 std::ostream& operator<<(std::ostream &out, const strawman_adscsnark_proof<ppT> &proof)
 {
@@ -44,20 +46,21 @@ libsnark::r1cs_constraint<FieldT> r1cs_constraint_remap(const libsnark::r1cs_con
 }
 
 template<typename ppT>
-std::vector<ethsnarks::eddsa_keypair> strawman_adscsnark_generator_auth(const std::vector<size_t> &private_input_blocks){
+std::vector<strawman_adscsnark_authentication_keypair<ppT>> strawman_adscsnark_generator_auth(const std::vector<size_t> &private_input_blocks){
     size_t num_keys = 1;
     if(private_input_blocks.size() > 0){
         num_keys = private_input_blocks.size();
     }
-    std::vector<ethsnarks::eddsa_keypair> auth_keys(num_keys);
+    std::vector<strawman_adscsnark_authentication_keypair<ppT>> auth_keys;
+    auth_keys.reserve(num_keys);
     for(size_t i = 0; i < num_keys; ++i){
-        ethsnarks::eddsa_generate_keypair(auth_keys[i].sk, auth_keys[i].pk);
+        auth_keys.push_back(libsnark::eddsa_sf_generate<EC_Inner<ppT>>());
     }
     return auth_keys;
 }
 
 template<typename ppT>
-strawman_adscsnark_relation<libff::Fr<ppT>> r1cs_example_to_r1cs_strawman_adsc(const libsnark::r1cs_adsc_example<libff::Fr<ppT>> &example, const std::vector<ethsnarks::eddsa_keypair> &keys, const std::vector<size_t> &private_input_blocks){
+strawman_adscsnark_relation<libff::Fr<ppT>> r1cs_example_to_r1cs_strawman_adsc(const libsnark::r1cs_adsc_example<libff::Fr<ppT>> &example, const std::vector<strawman_adscsnark_authentication_keypair<ppT>> &keys, const std::vector<size_t> &private_input_blocks){
     strawman_adscsnark_relation<libff::Fr<ppT>> relation;
 
     relation.primary_input_size = example.primary_input[0].size();
@@ -111,7 +114,7 @@ strawman_adscsnark_relation<libff::Fr<ppT>> r1cs_example_to_r1cs_strawman_adsc(c
     {
         size_t j = 0;
         for (size_t i = 0; i < keys.size(); ++i) {
-            relation.signature_gadgets.push_back(signature_gadget<libff::Fr<ppT>>(relation.pb, keys[i].pk, FMT("signature_gadget", "%d", i)));
+            relation.signature_gadgets.push_back(signature_gadget<libff::Fr<ppT>>(relation.pb, keys[i].pubkey, FMT("signature_gadget", "%d", i)));
             // connect private inputs to corresponding signature gadget
             while(j  < accumulated_input_block_size[i]){
                 relation.signature_gadgets[i].add_variable(relation.variable_map[1+relation.primary_input_size+j]);
@@ -170,12 +173,14 @@ strawman_adscsnark_relation<libff::Fr<ppT>> r1cs_example_to_r1cs_strawman_adsc(c
 
 template<typename ppT>
 strawman_adscsnark_signature<ppT> strawman_adscsnark_authenticate(const strawman_adscsnark_authentication_key<ppT> &ak, size_t iteration, const std::vector<libff::Fr<ppT>> &values){
-    ethsnarks::eddsa_msg_field msg;
+    static const libsnark::PoseidonParameters<ppT> param;
+    std::vector<libff::Fq<EC_Inner<ppT>>> msg;
+    msg.reserve(values.size() + 1);
     for(size_t i = 0; i < values.size(); ++i){
-        msg.push_back(values[i].as_bigint());
+        msg.push_back(libff::convert_field<libff::Fq<EC_Inner<ppT>>>(values[i]));
     }
-    msg.push_back(ethsnarks::FieldQ(iteration));
-    ethsnarks::EddsaSignature sig = ethsnarks::eddsa_poseidon_sign(msg, ak);
+    msg.push_back(libff::Fq<EC_Inner<ppT>>(iteration));
+    strawman_adscsnark_signature<ppT> sig = libsnark::eddsa_poseidon_sign(param, ak, msg);
     return sig;
 }
 
@@ -183,7 +188,7 @@ strawman_adscsnark_signature<ppT> strawman_adscsnark_authenticate(const strawman
 template<typename ppT>
 strawman_adscsnark_keypair<ppT> strawman_adscsnark_generator(strawman_adscsnark_relation<libff::Fr<ppT>> &relation,
                                                            const strawman_adscsnark_variable_assignment<ppT> &initial_state,
-                                                           const std::vector<ethsnarks::eddsa_keypair> &keys){
+                                                           const std::vector<strawman_adscsnark_authentication_keypair<ppT>> &keys){
 
     assert(initial_state.size() == relation.state_size);
 
@@ -206,7 +211,7 @@ strawman_adscsnark_keypair<ppT> strawman_adscsnark_generator(strawman_adscsnark_
     keypair.initial_proof.hash = relation.pb.val(relation.state_out_digest);
 
     for(size_t i = 0; i < keys.size(); ++i) {
-        keypair.aks.push_back(keys[i].sk);
+        keypair.aks.push_back(keys[i].privkey);
     }
     return keypair;
 }
@@ -215,9 +220,9 @@ template<typename ppT>
 strawman_adscsnark_proof<ppT> strawman_adscsnark_prover(const strawman_adscsnark_proving_key<ppT> &pk,
                                                           strawman_adscsnark_relation<libff::Fr<ppT>> &relation,
                                                           const strawman_adscsnark_primary_input<ppT> &primary_input,
-                                                          const strawman_adscsnark_variable_assignment<ppT> private_input,
-                                                          const strawman_adscsnark_variable_assignment<ppT> state_assignment,
-                                                          const strawman_adscsnark_variable_assignment<ppT> witness_assignment,
+                                                          const strawman_adscsnark_variable_assignment<ppT> &private_input,
+                                                          const strawman_adscsnark_variable_assignment<ppT> &state_assignment,
+                                                          const strawman_adscsnark_variable_assignment<ppT> &witness_assignment,
                                                           const std::vector<strawman_adscsnark_signature<ppT>> &signatures){
     strawman_adscsnark_proof<ppT> proof;
     libsnark::r1cs_gg_ppzksnark_primary_input<ppT> new_primary_input;

@@ -7,6 +7,9 @@
 
  *****************************************************************************/
 
+#ifndef SIGNATURE_GADGET_TCC
+#define SIGNATURE_GADGET_TCC
+
 #include "signature_gadget.hpp"
 
 template<typename FieldT>
@@ -15,7 +18,7 @@ void signature_gadget_pedersen<FieldT>::generate_r1cs_constraints ()
     // Fix public key into SNARK
     // generate_r1cs_constraints is called by generator -> this means pb.val(A.x) present at generator will
     // be encoded into the SNARK. If the prover falsely inserts a different A.x, the verifier will reject it
-    generate_r1cs_equals_const_constraint(this->pb, libsnark::pb_linear_combination<FieldT>(A.x), FieldT(pubkey.X.as_bigint()), ".fixed_pubkey");
+    generate_r1cs_equals_const_constraint(this->pb, libsnark::pb_linear_combination<FieldT>(A.x), FieldT(pubkey.pkey.X.as_bigint()), ".fixed_pubkey");
 
     for(size_t i=0; i < variables.size(); i++){
         pack_gadgets[i].generate_r1cs_constraints(true);
@@ -24,11 +27,11 @@ void signature_gadget_pedersen<FieldT>::generate_r1cs_constraints ()
 }
 
 template<typename FieldT>
-void signature_gadget_pedersen<FieldT>::generate_r1cs_witness (ethsnarks::EddsaSignature sig)
+void signature_gadget_pedersen<FieldT>::generate_r1cs_witness (libsnark::eddsa_sf_signature<ethsnarks::default_inner_ec_pp> sig)
 {
     // fixed pubkey
-    this->pb.val(A.x) = pubkey.X.as_bigint();
-    this->pb.val(A.y) = pubkey.Y.as_bigint();
+    this->pb.val(A.x) = pubkey.pkey.X.as_bigint();
+    this->pb.val(A.y) = pubkey.pkey.Y.as_bigint();
 
     FieldT s1 = FieldT(sig.s.as_bigint());
     sig_S.fill_with_bits_of_field_element(this->pb, s1);
@@ -64,7 +67,7 @@ void signature_gadget_pedersen<FieldT>::allocate ()
 }
 
 template<typename FieldT>
-void signature_gadget_pedersen<FieldT>::add_variable(const libsnark::pb_variable<FieldT> &v, const unsigned int size, bool is_signed)
+void signature_gadget_pedersen<FieldT>::add_variable(const libsnark::pb_variable<FieldT> &v, unsigned int size, bool is_signed)
 {
     variable_type_t vt;
     variables.push_back(v);
@@ -81,7 +84,7 @@ void signature_gadget_poseidon<FieldT>::generate_r1cs_constraints ()
 }
 
 template<typename FieldT>
-void signature_gadget_poseidon<FieldT>::generate_r1cs_witness (ethsnarks::EddsaSignature sig)
+void signature_gadget_poseidon<FieldT>::generate_r1cs_witness (libsnark::eddsa_sf_signature<ethsnarks::default_inner_ec_pp> sig)
 {
     FieldT s1 = FieldT(sig.s.as_bigint());
     sig_S.fill_with_bits_of_field_element(this->pb, s1);
@@ -106,7 +109,9 @@ void signature_gadget_poseidon<FieldT>::add_variable(const libsnark::pb_variable
 }
 
 template<typename FieldT>
-void signature_gadget_poseidon<FieldT>::add_variable(const libsnark::pb_variable<FieldT> &v,  const unsigned int size, bool is_signed)
+void signature_gadget_poseidon<FieldT>::add_variable(const libsnark::pb_variable<FieldT> &v,  unsigned int size, bool is_signed)
 {
     this->add_variable(v);
 }
+
+#endif

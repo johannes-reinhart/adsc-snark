@@ -9,7 +9,8 @@ target_link_libraries(
         profile_strawman_adscsnark
 
         snark
-        ethsnarks_crypto
+        snark_crypto
+        ethsnarks_jubjub
         ${Boost_LIBRARIES}
 )
 

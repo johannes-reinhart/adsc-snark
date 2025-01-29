@@ -10,13 +10,14 @@
 #include <cstdio>
 #include <boost/program_options.hpp>
 
-#include "depends/libff/libff/common/profiling.hpp"
-#include "depends/libff/libff/common/utils.hpp"
-#include "depends/libff/libff/common/default_types/ec_pp.hpp"
+#include <libff/common/profiling.hpp>
+#include <libff/common/utils.hpp>
+#include <libff/common/default_types/ec_pp.hpp>
 
-#include "depends/libsnark/libsnark/common/default_types/r1cs_gg_ppzkadscsnark_pp.hpp"
-#include "depends/libsnark/libsnark/relations/constraint_satisfaction_problems/r1cs/examples/r1cs_ext_examples.hpp"
-#include "depends/libsnark/libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp"
+#include <libsnark/common/curve/curve_properties.hpp>
+#include <libsnark/common/default_types/r1cs_gg_ppzkadscsnark_pp.hpp>
+#include <libsnark/relations/constraint_satisfaction_problems/r1cs/examples/r1cs_ext_examples.hpp>
+#include <libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp>
 
 #include "strawman_adscsnark.hpp"
 
@@ -96,7 +97,7 @@ adscsnark_profile_t profile_strawman_adscsnark(
 
     r1cs_adsc_example<libff::Fr<PP> > example = generate_r1cs_adsc_example_with_field_input<libff::Fr<PP> >(num_constraints, public_io_size, private_input_size, state_size, samples);
 
-    std::vector<ethsnarks::eddsa_keypair> auth_keys = strawman_adscsnark_generator_auth<PP>();
+    std::vector<strawman_adscsnark_authentication_keypair<PP>> auth_keys = strawman_adscsnark_generator_auth<PP>();
     strawman_adscsnark_relation<libff::Fr<PP>> relation = r1cs_example_to_r1cs_strawman_adsc<PP>(example, auth_keys);
 
     profile_result.witness_size = relation.constraint_system.num_variables() - public_io_size;
@@ -194,7 +195,7 @@ int main(int argc, const char * argv[])
     int samples;
 
     PP::init_public_params();
-    ethsnarks::init_eddsa();
+    libsnark::EC_Inner<PP>::init_public_params();
 
 #ifndef DEBUG
     // We do not want to print profiling info at runtime, we will print results at the end

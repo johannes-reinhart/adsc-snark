@@ -17,13 +17,17 @@ in order to make proofs on authenticated data and with state consistency
 
 #include <vector>
 
-#include "depends/libsnark/libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp"
-#include "depends/libsnark/libsnark/relations/constraint_satisfaction_problems/r1cs/r1cs_ext.hpp"
-#include "crypto/signatures/eddsa.h"
+#include <libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp>
+#include <libsnark/relations/constraint_satisfaction_problems/r1cs/r1cs_ext.hpp>
+#include <libsnark/common/crypto/signature/eddsa.hpp>
+#include <libsnark/common/crypto/signature/eddsa_snarkfriendly.hpp>
+#include <libsnark/common/curve/curve_properties.hpp>
 
 #include "signature_gadget.hpp"
 #include "state_gadget.hpp"
 #include "sequence_check_gadget.hpp"
+
+using libsnark::EC_Inner;
 
 template<typename ppT>
 using strawman_adscsnark_constraint_system = libsnark::r1cs_adsc_constraint_system<libff::Fr<ppT> >;
@@ -47,10 +51,13 @@ template<typename ppT>
 using strawman_adscsnark_processed_verification_key = libsnark::r1cs_gg_ppzksnark_processed_verification_key<ppT>;
 
 template<typename ppT>
-using strawman_adscsnark_authentication_key = ethsnarks::eddsa_private_key;
+using strawman_adscsnark_authentication_key = libsnark::eddsa_sf_privkey<EC_Inner<ppT>>;
 
 template<typename ppT>
-using strawman_adscsnark_signature = ethsnarks::EddsaSignature;
+using strawman_adscsnark_authentication_keypair = libsnark::eddsa_sf_keypair<EC_Inner<ppT>>;
+
+template<typename ppT>
+using strawman_adscsnark_signature = libsnark::eddsa_sf_signature<EC_Inner<ppT>>;
 
 template<typename ppT>
 class strawman_adscsnark_proof;
@@ -122,7 +129,7 @@ struct strawman_adscsnark_relation {
  * the relation for better efficiency
  */
 template<typename ppT>
-std::vector<ethsnarks::eddsa_keypair> strawman_adscsnark_generator_auth(const std::vector<size_t> &private_input_blocks=std::vector<size_t>());
+std::vector<strawman_adscsnark_authentication_keypair<ppT>> strawman_adscsnark_generator_auth(const std::vector<size_t> &private_input_blocks=std::vector<size_t>());
 
 /**
  * Relation reduction for strawman ADSC-SNARK
@@ -131,7 +138,7 @@ std::vector<ethsnarks::eddsa_keypair> strawman_adscsnark_generator_auth(const st
  * to the base relation
  */
 template<typename ppT>
-strawman_adscsnark_relation<libff::Fr<ppT>> r1cs_example_to_r1cs_strawman_adsc(const libsnark::r1cs_adsc_example<libff::Fr<ppT> > &example, const std::vector<ethsnarks::eddsa_keypair> &keys, const std::vector<size_t> &private_input_blocks=std::vector<size_t>());
+strawman_adscsnark_relation<libff::Fr<ppT>> r1cs_example_to_r1cs_strawman_adsc(const libsnark::r1cs_adsc_example<libff::Fr<ppT> > &example, const std::vector<strawman_adscsnark_authentication_keypair<ppT>> &keys, const std::vector<size_t> &private_input_blocks=std::vector<size_t>());
 
 /**
  * Authenticator algorithm for the strawman ADSC-SNARK
@@ -145,7 +152,7 @@ strawman_adscsnark_signature<ppT> strawman_adscsnark_authenticate(const strawman
 template<typename ppT>
 strawman_adscsnark_keypair<ppT> strawman_adscsnark_generator(strawman_adscsnark_relation<libff::Fr<ppT>> &relation,
                                                            const strawman_adscsnark_variable_assignment<ppT> &initial_state,
-                                                           const std::vector<ethsnarks::eddsa_keypair> &keys);
+                                                           const std::vector<strawman_adscsnark_authentication_keypair<ppT>> &keys);
 
 /**
  * Proving algorithm for the strawman ADSC-SNARK
@@ -154,9 +161,9 @@ template<typename ppT>
 strawman_adscsnark_proof<ppT> strawman_adscsnark_prover(const strawman_adscsnark_proving_key<ppT> &pk,
                                                           strawman_adscsnark_relation<libff::Fr<ppT>> &relation,
                                                           const strawman_adscsnark_primary_input<ppT> &primary_input,
-                                                          const strawman_adscsnark_variable_assignment<ppT> private_input,
-                                                          const strawman_adscsnark_variable_assignment<ppT> state_assignment,
-                                                          const strawman_adscsnark_variable_assignment<ppT> witness_assignment,
+                                                          const strawman_adscsnark_variable_assignment<ppT> &private_input,
+                                                          const strawman_adscsnark_variable_assignment<ppT> &state_assignment,
+                                                          const strawman_adscsnark_variable_assignment<ppT> &witness_assignment,
                                                           const std::vector<strawman_adscsnark_signature<ppT>> &signatures);
 
 /**

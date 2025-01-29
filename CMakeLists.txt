@@ -82,6 +82,12 @@ option(
         ON
 )
 
+option(
+        SIGNATURE_SNARKFRIENDLY
+        "Use Snark-friendly signature scheme for adsc-snark"
+        OFF
+)
+
 option(ETHSNARKS_DISABLE_TESTS "Disable ethsnarks tests" OFF)
 option(ETHSNARKS_DISABLE_UTILS "Disable ethsnarks utilties" ON)
 option(ETHSNARKS_DISABLE_PINOCCHIO "Disable pinocchio / xjsnark compatibility" OFF)
@@ -234,6 +240,12 @@ endif()
 
 if("${USE_ASM}")
   add_definitions(-DUSE_ASM)
+endif()
+
+if("${SIGNATURE_SNARKFRIENDLY}")
+  add_definitions(
+          -DSIGNATURE_SNARKFRIENDLY
+  )
 endif()
 
 if("${USE_LINKED_LIBRARIES}")
