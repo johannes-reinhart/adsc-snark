@@ -14,10 +14,16 @@ The following instructions have been tested on **Ubuntu 24.04**
 Build instructions
 --------------------------------------------------------------------------------
 
-1. Install build tools and dependencies
+0. Install build tools and dependencies
 
 ```
 sudo apt-get install build-essential cmake libgmp3-dev libssl-dev pkg-config libboost-all-dev
+```
+
+1. Clone submodules
+
+```
+git submodule init && git submodule update
 ```
 
 2. Configure
