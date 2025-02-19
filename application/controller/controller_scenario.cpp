@@ -600,6 +600,7 @@ int main(int argc, char *argv[]) {
     }
 
     EcPP::init_public_params();
+    EC_Inner<EcPP>::init_public_params();
 
     // Disable profiling
 #ifndef DEBUG

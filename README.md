@@ -2,10 +2,10 @@ ADSC-SNARK Applications and Benchmarking
 ================================================================================
 
 This repository contains demo applications for ADSC-SNARK. It also provides
-an implementation of a folklore ADSC-SNARK, which arithmetizes signature
+an implementation of a strawman ADSC-SNARK, which arithmetizes signature
 verification and collision resistant hash functions in the relation. 
 
-The ADSC-SNARK by Reinhart et. al (CCS'25) and corresponding benchmarking routines
+The ADSC-SNARK and corresponding benchmarking routines
 are implemented in the libsnark submodule
 
 The following instructions have been tested on **Ubuntu 24.04**
