@@ -85,7 +85,7 @@ option(
 option(
         SIGNATURE_SNARKFRIENDLY
         "Use Snark-friendly signature scheme for adsc-snark"
-        OFF
+        ON
 )
 
 option(ETHSNARKS_DISABLE_TESTS "Disable ethsnarks tests" OFF)

@@ -97,6 +97,7 @@ class NetworkParticipant {
 private:
     Communicator &comm;
 protected:
+    bool silent;
 
     uint16_t get_time(){
         return comm.get_time();
@@ -114,7 +115,7 @@ protected:
 
 public:
     std::string name;
-    NetworkParticipant(std::string name, Communicator &comm) : comm(comm), name(name) {}
+    NetworkParticipant(std::string name, Communicator &comm, bool silent=false) : comm(comm), silent(silent), name(name)  {}
 };
 
 

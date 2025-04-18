@@ -9,6 +9,10 @@
  pid_structured_gadget: Discrete PID Controller with Lowpass-Filter on D-Component
 
  pt1_structured_gadget: Discrete PT1 Controller
+
+ integrator_structured_gadget: Discrete Integrator
+
+ gain_gadgets: Simple Gain (Multiplication). Not stateful
  *****************************************************************************/
 
 #ifndef _CONTROL_GADGETS_STRUCTURED_H
@@ -199,6 +203,191 @@ public:
 
     void generate_r1cs_constraints();
     void generate_r1cs_witness();
+};
+
+/**
+ * integrator control gadget
+ *
+ * Discrete-Time Integrator
+ * that uses Backward-Euler Approximation
+ * State Transfer function
+ *
+ * Time discrete:
+ * y(t) = y(t-1) + K*ts*u(t)
+*
+ *
+ * K: k_gain, proportional amplification
+ * ts: discretization time
+ *
+ *  Precision:
+ *  number of bits to shift the coefficients:
+ *  p = 1 << precision
+ *  y(t) = y(t-1) + (K*p*ts*u(t)) / p
+*
+ *  The higher the precision, the lower the rounding errors
+ *
+ *  Word Size:
+ *  Number of bits to represent the output values
+ */
+template<typename FieldT>
+class integrator_structured_gadget : public gadget<FieldT> {
+private:
+    int coeff_k;
+    pb_state_structured<FieldT> x_i;
+    state_manager<FieldT> &s_manager;
+    const unsigned int precision;
+    const unsigned int word_size;
+    std::shared_ptr<fixed_division_gadget<FieldT>> division;
+    const pb_linear_combination<FieldT> input;
+    const pb_variable<FieldT> delta;
+
+public:
+
+    integrator_structured_gadget(structured_protoboard<FieldT>& pb,
+                          ::state_manager<FieldT> &s_manager,
+                          const pb_linear_combination<FieldT> &input,
+               const double k_gain,
+               const double ts,
+               const unsigned int precision,
+               const unsigned int word_size,
+               const std::string &annotation_prefix="") :
+            gadget<FieldT>(pb, annotation_prefix),
+            x_i(pb, s_manager.id_block_in, s_manager.id_block_out, FieldT(0), annotation_prefix),
+            s_manager(s_manager), precision(precision), word_size(word_size), input(input)
+    {
+        int precision_factor = (1 << precision);
+        coeff_k = k_gain * ts * precision_factor;
+        delta.allocate(pb, FMT(this->annotation_prefix, ".delta"));
+
+        division.reset(new fixed_division_gadget<FieldT>(this->pb, word_size, coeff_k * input, precision_factor, delta, FMT(this->annotation_prefix, ".division")));
+        s_manager.add_state(x_i);
+    }
+
+    void generate_r1cs_constraints();
+    void generate_r1cs_witness();
+    const pb_variable<FieldT>& get_output() const;
+};
+
+/**
+ * limited integrator control gadget
+ *
+ * Discrete-Time Integrator with upper and lower limits
+ * that uses Backward-Euler Approximation
+ * State Transfer function
+ *
+ * Time discrete:
+ * y(t) = limit(y(t-1) + K*ts*u(t), min, max)
+ *
+ *
+ * K: k_gain, proportional amplification
+ * ts: discretization time
+ *
+ *  Precision:
+ *  number of bits to shift the coefficients:
+ *  p = 1 << precision
+ *  y(t) = y(t-1) + (K*p*ts*u(t)) / p
+*
+ *  The higher the precision, the lower the rounding errors
+ *
+ *  Word Size:
+ *  Number of bits to represent the output values
+ */
+template<typename FieldT>
+class limited_integrator_structured_gadget : public gadget<FieldT> {
+private:
+    int coeff_k;
+    pb_state_structured<FieldT> x_i;
+    state_manager<FieldT> &s_manager;
+    const unsigned int precision;
+    const unsigned int word_size;
+    std::shared_ptr<fixed_division_gadget<FieldT>> division;
+    std::shared_ptr<limit_gadget<FieldT>> limit;
+    const pb_linear_combination<FieldT> input;
+    pb_variable<FieldT> delta;
+
+public:
+
+    limited_integrator_structured_gadget(structured_protoboard<FieldT>& pb,
+                          ::state_manager<FieldT> &s_manager,
+                          const linear_combination<FieldT> &input,
+               double k_gain,
+               double ts,
+               int min,
+               int max,
+               unsigned int precision,
+               unsigned int word_size,
+               const std::string &annotation_prefix="") :
+            gadget<FieldT>(pb, annotation_prefix),
+            x_i(pb, s_manager.id_block_in, s_manager.id_block_out, FieldT(0), annotation_prefix),
+            s_manager(s_manager), precision(precision), word_size(word_size), input(pb, input)
+    {
+        int precision_factor = (1 << precision);
+        coeff_k = k_gain * ts * precision_factor;
+        delta.allocate(pb, FMT(this->annotation_prefix, ".delta"));
+
+        division.reset(new fixed_division_gadget<FieldT>(this->pb, word_size, coeff_k * this->input, precision_factor, delta, FMT(this->annotation_prefix, ".division")));
+        limit.reset(new limit_gadget<FieldT>(this->pb, word_size, min, max, delta + x_i.in, x_i.out, FMT(this->annotation_prefix, ".limit")));
+        s_manager.add_state(x_i);
+    }
+
+    void generate_r1cs_constraints();
+    void generate_r1cs_witness();
+    const pb_variable<FieldT>& get_output() const;
+};
+
+/**
+ * gain control gadget
+ *
+ * fixed gain multiplier
+ *
+ * State Transfer function
+ *
+ * Time discrete:
+ * y(t) = K*u(t)
+*
+ *
+ * K: k_gain, proportional amplification
+ *
+ *  Precision:
+ *  number of bits to shift the coefficients:
+ *  p = 1 << precision
+ *  y(t) = (K*p*ts*u(t)) / p
+*
+ *  The higher the precision, the lower the rounding errors
+ *
+ *  Word Size:
+ *  Number of bits to represent the output values
+ */
+template<typename FieldT>
+class gain_gadget : public gadget<FieldT> {
+private:
+    int coeff_k;
+    const unsigned int precision;
+    const unsigned int word_size;
+    std::shared_ptr<fixed_division_gadget<FieldT>> division;
+    pb_variable<FieldT> output;
+
+public:
+    gain_gadget(protoboard<FieldT>& pb,
+               const linear_combination<FieldT> &input,
+               const double k_gain,
+               const unsigned int precision,
+               const unsigned int word_size,
+               const std::string &annotation_prefix="") :
+            gadget<FieldT>(pb, annotation_prefix),
+            precision(precision), word_size(word_size)
+    {
+        int precision_factor = (1 << precision);
+        coeff_k = k_gain * precision_factor;
+        output.allocate(pb, FMT(this->annotation_prefix, ".out"));
+
+        division.reset(new fixed_division_gadget<FieldT>(this->pb, word_size, coeff_k * input, precision_factor, output, FMT(this->annotation_prefix, ".division")));
+    }
+
+    void generate_r1cs_constraints();
+    void generate_r1cs_witness();
+    const pb_variable<FieldT>& get_output() const;
+
 };
 
 #include "control_gadgets_structured.tcc"

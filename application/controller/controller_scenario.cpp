@@ -1,7 +1,7 @@
 /** @file
  *****************************************************************************
 
- Demo application for ADSC-SNARK consisting of
+ Demo application for a 3-DOF PID Controller
 
  Generator: Setup Relation and send authentication, verification and prover
  keys to other parties. Generator is assumed to be honest.
@@ -533,8 +533,8 @@ private:
 public:
     int confirmed_count;
     int error_count;
-    Verifier(std::string name="Verifier", Communicator &comm=default_comm) :
-    NetworkParticipant(name, comm), message_count(0), confirmed_count(0), error_count(0) {}
+    Verifier(std::string name="Verifier", Communicator &comm=default_comm, bool silent = false) :
+    NetworkParticipant(name, comm, silent), message_count(0), confirmed_count(0), error_count(0) {}
     void setup();
     void run();
 };
@@ -558,12 +558,13 @@ void Verifier::run(){
     const long output_z = field_to_signed_int(primary_input[2]);
 
     const bool verified = r1cs_gg_ppzkadscsnark_online_verifier_strong_IC<EcPP>(pvk, primary_input, proof, commitment, previous_commitment, mc);
-    if (!verified){
+    if (!verified && !silent){
         std::cerr << "SNARK does not verify" << std::endl;
     }
 
     previous_commitment = commitment;
-    if (!libff::inhibit_profiling_info) {
+    if (!silent)
+    {
         std::cout << " Outputs: x=" << output_x << " y=" << output_y << " z=" << output_z << " Verified: " << verified
                   << std::endl;
     }
@@ -588,6 +589,8 @@ int main(int argc, char *argv[]) {
             ("sensor", "Run the sensor")
             ("device", "Calculate commands and generate proof")
             ("verifier", "Check proof")
+            ("all", "Run generator, sensors, device and verifier")
+            ("silent", "Do not print outputs")
             ("rounds", po::value<int>(&rounds)->default_value(1), "run complete scenario with number of rounds")
             ("file", "Write outputs to a file");
 
@@ -600,7 +603,11 @@ int main(int argc, char *argv[]) {
     }
 
     EcPP::init_public_params();
+#ifdef SIGNATURE_SNARKFRIENDLY
     EC_Inner<EcPP>::init_public_params();
+#endif
+
+    bool silent = vm.count("silent") > 0;
 
     // Disable profiling
 #ifndef DEBUG
@@ -627,14 +634,14 @@ int main(int argc, char *argv[]) {
     SensorInputCmd sensorInputCmd2("SensorInputCmd2", communicator);
     SensorMeasurement sensorMeasurement1("SensorMeasurement1", communicator);
     SensorMeasurement sensorMeasurement2("SensorMeasurement2", communicator);
-    Verifier ver("Verifier", communicator);
+    Verifier ver("Verifier", communicator, silent);
 
-    if(vm.count("generator")) {
+    if(vm.count("generator") || vm.count("all")) {
         std::cout << "generator ";
         gen.setup();
     }
 
-    if (vm.count("sensor")) {
+    if (vm.count("sensor") || vm.count("all")) {
         std::cout << "sensor ";
         sensorInputCmd1.setup();
         sensorInputCmd2.setup();
@@ -642,12 +649,12 @@ int main(int argc, char *argv[]) {
         sensorMeasurement2.setup();
     }
 
-    if (vm.count("device")) {
+    if (vm.count("device") || vm.count("all")) {
         std::cout << "device ";
         device.setup();
     }
 
-    if (vm.count("verifier")) {
+    if (vm.count("verifier") || vm.count("all")) {
         std::cout << "verifier ";
         ver.setup();
     }
@@ -657,16 +664,16 @@ int main(int argc, char *argv[]) {
 
     start_time = libff::get_nsec_time();
     for(int i = 0; i < rounds; i++) {
-        if (vm.count("sensor")) {
+        if (vm.count("sensor") || vm.count("all")) {
             sensorInputCmd1.run();
             sensorInputCmd2.run();
             sensorMeasurement1.run();
             sensorMeasurement2.run();
         }
-        if (vm.count("device")) {
+        if (vm.count("device") || vm.count("all")) {
             device.run();
         }
-        if (vm.count("verifier")) {
+        if (vm.count("verifier") || vm.count("all")) {
             ver.run();
         }
         communicator.tick();
@@ -674,8 +681,8 @@ int main(int argc, char *argv[]) {
     end_time = libff::get_nsec_time();
 
     std::cout << rounds << " rounds completed." << std::endl;
-    if(vm.count("verifier")) {
-        std::cout << "Verifier - Confirmed: " << ver.confirmed_count << " Errors: " << ver.error_count << std::endl;
+    if(vm.count("verifier") || vm.count("all")) {
+        std::cout << "Verifier - Confirmed: " << ver.confirmed_count << " (Errors: " << ver.error_count << ")" << std::endl;
     }
     std::cout << "Duration: " << (end_time - start_time) / 1000 << "us, = " << (end_time - start_time) / 1000 / rounds << "us per round" << std::endl;
 
